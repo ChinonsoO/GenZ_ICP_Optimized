@@ -93,7 +93,7 @@ elseif("$ENV{ROS_VERSION}" STREQUAL "2")
   rclcpp_components_register_node(odometry_component PLUGIN "genz_icp_ros::OdometryServer" EXECUTABLE odometry_node)
 
   install(TARGETS odometry_component LIBRARY DESTINATION lib RUNTIME DESTINATION lib/${PROJECT_NAME})
-  install(DIRECTORY launch rviz DESTINATION share/${PROJECT_NAME}/)
+  install(DIRECTORY launch rviz config DESTINATION share/${PROJECT_NAME}/)
 
   ament_package()
 

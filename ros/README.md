@@ -24,7 +24,7 @@ source ~/catkin_ws/devel/setup.bash
 If you want to use a pre-tuned parameter set, you need to provide the **config file** with the **topic name** as arguments:
 
 ```sh
-roslaunch genz_icp odometry.launch topic:=<topic_name> config_file:=<config_file_name>.yaml
+roslaunch genz_icp odometry.launch topic:=/qb2/points_raw config_file:=indoor.yaml
 ```
 ```sh
 rosbag play <rosbag_file_name>.bag

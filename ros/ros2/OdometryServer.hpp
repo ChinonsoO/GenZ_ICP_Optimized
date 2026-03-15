@@ -68,8 +68,8 @@ private:
     std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
     std::unique_ptr<tf2_ros::Buffer> tf2_buffer_;
     std::unique_ptr<tf2_ros::TransformListener> tf2_listener_;
-    bool publish_odom_tf_;
-    bool publish_debug_clouds_;
+    bool publish_odom_tf_{true};
+    bool publish_debug_clouds_{true};
 
     /// Data subscribers.
     rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr pointcloud_sub_;

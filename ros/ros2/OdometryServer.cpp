@@ -21,7 +21,9 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 #include <Eigen/Core>
+#include <cmath>
 #include <memory>
+#include <sstream>
 #include <sophus/se3.hpp>
 #include <utility>
 #include <vector>
@@ -51,6 +53,50 @@ namespace genz_icp_ros {
 using utils::EigenToPointCloud2;
 using utils::GetTimestamps;
 using utils::PointCloud2ToEigen;
+
+namespace {
+
+size_t CountPointsInRange(const std::vector<Eigen::Vector3d> &points,
+                          double min_range,
+                          double max_range) {
+    size_t count = 0;
+    for (const auto &point : points) {
+        if (!point.allFinite()) continue;
+        const double norm = point.norm();
+        if (std::isfinite(norm) && norm > min_range && norm < max_range) {
+            ++count;
+        }
+    }
+    return count;
+}
+
+std::string BuildWarningToken(size_t input_points,
+                              size_t cropped_points,
+                              size_t planar_points,
+                              size_t non_planar_points,
+                              const Sophus::SE3d &pose) {
+    std::vector<std::string> warnings;
+    if (input_points == 0) warnings.emplace_back("empty_input");
+    if (cropped_points == 0) warnings.emplace_back("no_points_in_range");
+    if ((planar_points + non_planar_points) == 0) warnings.emplace_back("zero_usable_points");
+
+    const auto &translation = pose.translation();
+    if (!std::isfinite(translation.x()) || !std::isfinite(translation.y()) ||
+        !std::isfinite(translation.z())) {
+        warnings.emplace_back("nan_pose");
+    }
+
+    if (warnings.empty()) return "none";
+
+    std::ostringstream warning_stream;
+    for (size_t index = 0; index < warnings.size(); ++index) {
+        if (index > 0) warning_stream << "|";
+        warning_stream << warnings[index];
+    }
+    return warning_stream.str();
+}
+
+}  // namespace
 
 OdometryServer::OdometryServer(const rclcpp::NodeOptions &options)
     : rclcpp::Node("odometry_node", options) {
@@ -125,6 +171,8 @@ Sophus::SE3d OdometryServer::LookupTransform(const std::string &target_frame,
 void OdometryServer::RegisterFrame(const sensor_msgs::msg::PointCloud2::ConstSharedPtr &msg) {
     const auto cloud_frame_id = msg->header.frame_id;
     const auto points = PointCloud2ToEigen(msg);
+    const size_t input_points = points.size();
+    const size_t cropped_points = CountPointsInRange(points, config_.min_range, config_.max_range);
     const auto timestamps = [&]() -> std::vector<double> {
         if (!config_.deskew) return {};
         return GetTimestamps(msg);
@@ -133,6 +181,8 @@ void OdometryServer::RegisterFrame(const sensor_msgs::msg::PointCloud2::ConstSha
 
     // Register frame, main entry point to GenZ-ICP pipeline
     const auto &[planar_points, non_planar_points] = odometry_.RegisterFrame(points, timestamps);
+    const size_t planar_count = planar_points.size();
+    const size_t non_planar_count = non_planar_points.size();
 
     // Compute the pose using GenZ, ego-centric to the LiDAR
     const Sophus::SE3d genz_pose = odometry_.poses().back();
@@ -143,6 +193,20 @@ void OdometryServer::RegisterFrame(const sensor_msgs::msg::PointCloud2::ConstSha
         const Sophus::SE3d cloud2base = LookupTransform(base_frame_, cloud_frame_id);
         return cloud2base * genz_pose * cloud2base.inverse();
     }();
+    const std::string warning_token =
+        BuildWarningToken(input_points, cropped_points, planar_count, non_planar_count, pose);
+
+    RCLCPP_INFO_STREAM(this->get_logger(),
+                       "GENZ_DIAGNOSTIC inputPoints=" << input_points
+                                                      << " croppedPoints=" << cropped_points
+                                                      << " planarPoints=" << planar_count
+                                                      << " nonPlanarPoints=" << non_planar_count
+                                                      << " warning=" << warning_token);
+    if (warning_token != "none") {
+        RCLCPP_WARN_STREAM(this->get_logger(),
+                           "GENZ_DIAGNOSTIC_WARNING warning=" << warning_token
+                                                              << " frame=" << cloud_frame_id);
+    }
 
     // Spit the current estimated pose to ROS msgs
     PublishOdometry(pose, msg->header.stamp, cloud_frame_id);
