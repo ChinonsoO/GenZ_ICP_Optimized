@@ -74,7 +74,7 @@ def load_config_parameters(config_file: str) -> dict:
 
 
 def resolve_node_parameters(launch_values: dict) -> dict:
-    config_file = str(launch_values.get("config_file", ""))
+    config_file = str(launch_values.get("config_file", "indoor.yaml"))
     has_config_file = bool(config_file)
     node_parameters = load_config_parameters(config_file)
     node_parameters.update(
@@ -179,7 +179,7 @@ def generate_launch_description():
             DeclareLaunchArgument("min_motion_th", default_value=UNSET_OVERRIDE),
             DeclareLaunchArgument(
                 "config_file",
-                default_value=PathJoinSubstitution([current_pkg, "config", "indoor.yaml"]),
+                default_value=PathJoinSubstitution([current_pkg, "config", "indosor.yaml"]),
             ),
             OpaqueFunction(function=_create_runtime_actions),
         ]

@@ -2,14 +2,14 @@
 
 # topic: (set in launch file or command line)
 deskew: false
-max_range: 10.0
-min_range: 1.0
-voxel_size: 0.2
-map_cleanup_radius: 12.0
-desired_num_voxelized_points: 2500
-planarity_threshold: 0.3
-max_points_per_voxel: 80
-initial_threshold: 2.0  
+max_range: 7.0
+min_range: 0.8
+voxel_size: 0.12
+map_cleanup_radius: 8.0
+desired_num_voxelized_points: 2000
+planarity_threshold: 0.28
+max_points_per_voxel: 40
+initial_threshold: 2.0
 min_motion_th: 0.1
-max_num_iterations: 150
+max_num_iterations: 180
 convergence_criterion: 0.0001
